@@ -1,4 +1,4 @@
-# vqa-deeplearning # 🍜 Visual Question Answering (VQA) – Vietnamese Food
+🍜 Visual Question Answering (VQA) – Vietnamese Food
 
 ## 📌 Overview
 
