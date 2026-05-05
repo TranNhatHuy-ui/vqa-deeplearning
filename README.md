@@ -1,72 +1,68 @@
-🍜 Visual Question Answering (VQA) – Vietnamese Food
+# 🍜 Visual Question Answering (VQA) – Vietnamese Food
 
 ## 📌 Overview
 
-This project implements a **Visual Question Answering (VQA)** system that can answer questions about images of Vietnamese food.
+This project builds a **Visual Question Answering (VQA)** system capable of answering questions about Vietnamese food images.
 
-We explore two main approaches:
+We implement and compare:
 
-* **A1 / A2 (Custom Model)**: CNN + LSTM/Transformer for multimodal learning
-* **B (Pretrained Model)**: BLIP (Bootstrapped Language Image Pretraining)
+* **A1 / A2**: Custom deep learning models
+* **B1 / B2**: Pretrained multimodal models (BLIP)
 
-The goal is to compare:
+---
 
-* Traditional deep learning pipeline vs
-* Modern multimodal pretrained models
+## 📁 Project Structure
+
+```text
+.
+├── Dataset/                # Dataset images + annotations
+├── testVQA/               # Test samples
+├── checkpoints/           # Training checkpoints
+├── best_model_a1.pth      # Best A1 model
+├── best_model_a2.pth      # Best A2 model
+├── best_model_b2/         # Saved pretrained model (B2)
+├── results_b2.json        # Output results B2
+├── eval_comparison.png    # Accuracy comparison chart
+├── test_A1.mp4            # Demo video A1
+├── test_A2.mp4            # Demo video A2
+├── test_B1.mp4            # Demo video B1
+├── test_B2.mp4            # Demo video B2
+├── VQAA.ipynb             # Notebook for A1 + A2
+├── VQAB.ipynb             # Notebook for B1 + B2
+├── report.pdf             # Final report
+```
 
 ---
 
 ## 🧠 Model Architectures
 
-### 🔹 A1 – LSTM-based VQA
+### 🔹 A1 – Baseline Model
 
-* Image encoder: CNN (ResNet)
-* Question encoder: LSTM
+* CNN (image encoder)
+* LSTM (question encoder)
 * Fusion: Element-wise multiplication
-* Output: Classification over answer vocabulary
+* Output: classification
 
 ---
 
-### 🔹 A2 – Improved VQA Model
+### 🔹 A2 – Improved Model
 
-* Image encoder: CNN
-* Question encoder: Transformer / Embedding
-* Fusion: Concatenation (improved from A1)
-* Regularization:
+* CNN encoder (image)
+* Embedding / Transformer encoder (question)
+* Fusion: Concatenation (improved)
+* Techniques:
 
   * Dropout
   * Label smoothing
-* Training:
-
-  * CrossEntropyLoss
-  * Validation + Early stopping
+  * Validation
 
 ---
 
-### 🔹 B – BLIP (Pretrained)
+### 🔹 B1 / B2 – BLIP Model
 
 * Model: `Salesforce/blip-vqa-base`
-* Zero-shot inference
-* No training required
-
----
-
-## 📂 Dataset
-
-* Custom dataset of Vietnamese food images
-* Each sample includes:
-
-  * Image
-  * Question
-  * Answer label
-
-Example:
-
-```text
-Image: bun_bo_hue.jpg  
-Question: Đây là món gì?  
-Answer: bún bò huế
-```
+* Zero-shot / fine-tuned
+* No need for training from scratch
 
 ---
 
@@ -78,95 +74,103 @@ pip install torch torchvision transformers pillow ipywidgets
 
 ---
 
-## 🚀 Usage
+## 🚀 How to Run
 
-### 1. Train A2 Model
+### 🔹 Train A1 / A2
 
-```python
-# Run training cell
+Open:
+
+```text
+VQAA.ipynb
 ```
 
-### 2. Load Model
+Run all cells to train model.
 
-```python
-model_a2.load_state_dict(torch.load("best_model_a2.pth", map_location=device))
-model_a2.eval()
+---
+
+### 🔹 Run BLIP (B1 / B2)
+
+Open:
+
+```text
+VQAB.ipynb
 ```
 
-### 3. Run Demo (Interactive)
+---
 
-Upload an image and input a question:
+### 🔹 Demo (Interactive)
 
-```python
-# Run demo cell
-```
+* Upload image
+* Input question
+* Get answer
 
 ---
 
 ## 📊 Evaluation
 
-We evaluate models using accuracy on test set:
+Results comparison:
 
-| Model | Accuracy |
-| ----- | -------- |
-| A1    | ...      |
-| A2    | ...      |
-| BLIP  | ...      |
+![Comparison](eval_comparison.png)
+
+| Model | Description    |
+| ----- | -------------- |
+| A1    | Baseline       |
+| A2    | Improved       |
+| B1    | BLIP zero-shot |
+| B2    | BLIP enhanced  |
+
+---
+
+## 🎥 Demo Videos
+
+* A1: `test_A1.mp4`
+* A2: `test_A2.mp4`
+* B1: `test_B1.mp4`
+* B2: `test_B2.mp4`
 
 ---
 
 ## 📈 Observations
 
-* A2 improves over A1 due to better fusion and regularization
-* BLIP performs well in zero-shot but struggles with Vietnamese
-* Custom model performs better on domain-specific dataset
+* A2 performs better than A1 due to improved fusion + regularization
+* BLIP works well but struggles with Vietnamese language
+* Custom models perform better on domain-specific dataset
 
 ---
 
 ## ⚠️ Challenges
 
-* Dataset is small → overfitting
-* Question bias (model ignores question)
-* BLIP not optimized for Vietnamese
+* Small dataset → overfitting
+* Question bias → model ignores question
+* Language mismatch (Vietnamese vs English)
 
 ---
 
 ## 🔧 Improvements
 
 * Data augmentation
-* Better fusion strategies
+* Better fusion strategy
 * Balanced question distribution
-* Multilingual fine-tuning
-
----
-
-## 🖼 Demo
-
-The system allows:
-
-* Upload image
-* Input question
-* Get predicted answer
+* Fine-tuning pretrained models
 
 ---
 
 ## 📌 Future Work
 
-* Fine-tune BLIP on Vietnamese dataset
-* Use larger dataset
-* Apply attention-based fusion
+* Train on larger dataset
+* Improve multilingual capability
 * Deploy as web app
 
 ---
 
 ## 👨‍💻 Author
 
-* Student: *[Your Name]*
-* Course: Machine Learning Project
+* Student: Trần Nhật Huy
+* Course: Machine Learning
 * University: Ton Duc Thang University
 
 ---
 
-## 📎 Notes
+## 📎 Note
 
-This project is for academic purposes only.
+This project is for academic purposes.
