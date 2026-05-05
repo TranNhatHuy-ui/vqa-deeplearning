@@ -1,176 +1,166 @@
-# 🍜 Visual Question Answering (VQA) – Vietnamese Food
+# 🍜 Vietnamese Food VQA System
 
-## 📌 Overview
-
-This project builds a **Visual Question Answering (VQA)** system capable of answering questions about Vietnamese food images.
-
-We implement and compare:
-
-* **A1 / A2**: Custom deep learning models
-* **B1 / B2**: Pretrained multimodal models (BLIP)
+Hệ thống **Visual Question Answering (VQA) tiếng Việt** trên miền món ăn Việt Nam.  
+Nhận đầu vào là **ảnh + câu hỏi tiếng Việt** → sinh **câu trả lời tiếng Việt**.
 
 ---
 
-## 📁 Project Structure
+## 📁 Cấu trúc dự án
 
-```text
-.
-├── Dataset/                # Dataset images + annotations
-├── testVQA/               # Test samples
-├── checkpoints/           # Training checkpoints
-├── best_model_a1.pth      # Best A1 model
-├── best_model_a2.pth      # Best A2 model
-├── best_model_b2/         # Saved pretrained model (B2)
-├── results_b2.json        # Output results B2
-├── eval_comparison.png    # Accuracy comparison chart
-├── test_A1.mp4            # Demo video A1
-├── test_A2.mp4            # Demo video A2
-├── test_B1.mp4            # Demo video B1
-├── test_B2.mp4            # Demo video B2
-├── VQAA.ipynb             # Notebook for A1 + A2
-├── VQAB.ipynb             # Notebook for B1 + B2
-├── report.pdf             # Final report
+```
+├── VQAA.ipynb              # Hướng A: Kiến trúc rời (A1 LSTM + A2 Transformer)
+├── VQAB.ipynb              # Hướng B: Multimodal pretrained BLIP (B1 Zero-shot + B2 Fine-tune)
+├── Dataset/
+│   ├── train.csv
+│   ├── val.csv
+│   ├── test.csv
+│   ├── train_en.csv        # Cache bản dịch tiếng Anh (tự sinh khi chạy B)
+│   ├── val_en.csv
+│   ├── test_en.csv
+│   └── Train / Val / Test/ # Thư mục ảnh
+├── best_model_a1.pth       # Checkpoint A1
+├── best_model_a2.pth       # Checkpoint A2
+├── best_model_b2/          # Checkpoint B2 (BlipForConditionalGeneration)
+├── results_b1.json         # Kết quả đánh giá B1
+├── results_b2.json         # Kết quả đánh giá B2
+├── eval_comparison.png     # Biểu đồ so sánh A1 vs A2
+└── eval_b1_vs_b2.png       # Biểu đồ so sánh B1 vs B2
 ```
 
 ---
 
-## 🧠 Model Architectures
+## 🏗️ Kiến trúc hệ thống
 
-### 🔹 A1 – Baseline Model
+### Hướng A — Kiến trúc rời
 
-* CNN (image encoder)
-* LSTM (question encoder)
-* Fusion: Element-wise multiplication
-* Output: classification
+| Thành phần | Chi tiết |
+|------------|----------|
+| **Image Encoder** | ResNet50 pretrained (ImageNet), bỏ FC layer, output (B, 2048) |
+| **Question Encoder** | BiLSTM, embedding 256, hidden 256, output (B, 512) |
+| **Fusion** | Concatenate → Linear(2560 → 256) |
+| **A1 Decoder** | LSTM decoder, teacher forcing khi train, autoregressive khi inference |
+| **A2 Decoder** | Transformer decoder, Positional Encoding, causal mask, 2 layers, 8 heads |
+
+```
+Image ──► ResNet50 ──► (B, 2048) ──┐
+                                    ├──► Concat ──► Linear ──► Memory
+Question ──► BiLSTM ──► (B, 512) ──┘
+                                              │
+                                    A1: LSTM Decoder
+                                    A2: Transformer Decoder
+                                              │
+                                         Answer tokens
+```
+
+### Hướng B — Multimodal Pretrained BLIP
+
+| Cấu hình | Model | Chiến lược |
+|----------|-------|------------|
+| **B1 Zero-shot** | `Salesforce/blip-vqa-base` | Không fine-tune, dùng trực tiếp |
+| **B2 Fine-tuned** | `Salesforce/blip-image-captioning-base` | Fine-tune layer cuối text_decoder + cls |
+
+**Chiến lược xử lý tiếng Việt:**
+```
+Câu hỏi (VI) ──► GoogleTranslator VI→EN ──► BLIP ──► Answer (EN) ──► GoogleTranslator EN→VI ──► Câu trả lời (VI)
+```
+> BLIP được train hoàn toàn bằng tiếng Anh → không thể nhận trực tiếp tiếng Việt.  
+> Dịch câu hỏi ngắn (VQA) ít mất nghĩa, phù hợp cho cả zero-shot lẫn fine-tune.
 
 ---
 
-### 🔹 A2 – Improved Model
+## 📊 Phương pháp đánh giá
 
-* CNN encoder (image)
-* Embedding / Transformer encoder (question)
-* Fusion: Concatenation (improved)
-* Techniques:
-
-  * Dropout
-  * Label smoothing
-  * Validation
+| Metric | Mô tả |
+|--------|-------|
+| **Exact Match** | Khớp chính xác 100% câu trả lời |
+| **BLEU** | Đánh giá n-gram overlap giữa prediction và reference |
+| **ROUGE-L** | Longest Common Subsequence, phù hợp câu trả lời dạng chuỗi |
+| **BERTScore F1** | Đánh giá độ tương đồng ngữ nghĩa bằng embedding, dùng model tiếng Việt (`lang="vi"`) |
 
 ---
 
-### 🔹 B1 / B2 – BLIP Model
+## 🗂️ Dataset
 
-* Model: `Salesforce/blip-vqa-base`
-* Zero-shot / fine-tuned
-* No need for training from scratch
+- **Miền**: Món ăn Việt Nam
+- **Chia tập**: Train / Val / Test = 80 / 10 / 10
+- **Format**: CSV với các cột `image_path`, `question`, `answer`, `label_key`
+- **Loại câu hỏi**: nhận dạng, yes/no, thuộc tính, màu sắc, phân loại
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Cài đặt
 
 ```bash
-pip install torch torchvision transformers pillow ipywidgets
+pip install torch torchvision transformers
+pip install deep-translator rouge-score bert-score nltk
+pip install pillow pandas tqdm ipywidgets
+pip install accelerate
 ```
 
 ---
 
-## 🚀 How to Run
+## 🚀 Hướng dẫn chạy
 
-### 🔹 Train A1 / A2
+### Hướng A (`VQAA.ipynb`)
 
-Open:
-
-```text
-VQAA.ipynb
+```
+Cell 1–6   : Import, load data, build vocab, dataset
+Cell 7–9B  : Định nghĩa ImageEncoder, QuestionEncoder, LSTM Decoder, Transformer Decoder
+Cell 10    : VQAModel A1 (LSTM decoder)
+Cell 11–14 : Train setup, checkpoint, train A1, load A1
+Cell 15–16 : Generate answer A1, demo interactive A1
+Cell 17    : Positional Encoding
+Cell 18    : VQAModel A2 (Transformer decoder)
+Cell 19–21 : Load image, train A2, load A2
+Cell 22–23 : Generate answer A2, demo interactive A2
+Cell 24–25 : So sánh A1 vs A2 (1 ảnh + multi test)
+Cell 26–29 : Cài thư viện, evaluation pipeline, chạy đánh giá, biểu đồ
 ```
 
-Run all cells to train model.
+### Hướng B (`VQAB.ipynb`)
 
----
-
-### 🔹 Run BLIP (B1 / B2)
-
-Open:
-
-```text
-VQAB.ipynb
+```
+Cell 1–4   : Cài thư viện, import, load data, hàm dịch VI↔EN
+Cell 5–8   : Load BLIP B1, generate B1, test thử, multi test
+Cell 9–12  : Evaluation B1, biểu đồ, lưu results_b1.json, demo interactive B1
+Cell 13–17 : Cài accelerate, dịch dataset → cache CSV, BLIPDataset, load model B2
+Cell 18    : Train B2 (batch=1, gradient accumulation=8, 3 epochs)
+Cell 19    : Plot loss curve B2
+Cell 20–22 : Generate answer B2, test thử, multi test
+Cell 23–26 : Evaluation B2, so sánh B1 vs B2, lưu results_b2.json
+Cell 27    : Demo interactive B2
 ```
 
----
-
-### 🔹 Demo (Interactive)
-
-* Upload image
-* Input question
-* Get answer
+> **Lưu ý Cell 14 (VQAB)**: Lần đầu chạy sẽ dịch toàn bộ dataset VI→EN và lưu vào `Dataset/train_en.csv`, `val_en.csv`, `test_en.csv`. Các lần sau tự động load cache, không gọi API lại.
 
 ---
 
-## 📊 Evaluation
+## 🖥️ Demo
 
-Results comparison:
-
-![Comparison](eval_comparison.png)
-
-| Model | Description    |
-| ----- | -------------- |
-| A1    | Baseline       |
-| A2    | Improved       |
-| B1    | BLIP zero-shot |
-| B2    | BLIP enhanced  |
+Cả 4 cấu hình đều có **demo interactive** trong notebook:
+- Upload ảnh từ máy tính
+- Nhập câu hỏi tiếng Việt
+- Nhận câu trả lời tiếng Việt
 
 ---
 
-## 🎥 Demo Videos
+## 📦 Thư viện chính
 
-* A1: `test_A1.mp4`
-* A2: `test_A2.mp4`
-* B1: `test_B1.mp4`
-* B2: `test_B2.mp4`
-
----
-
-## 📈 Observations
-
-* A2 performs better than A1 due to improved fusion + regularization
-* BLIP works well but struggles with Vietnamese language
-* Custom models perform better on domain-specific dataset
+| Thư viện | Mục đích |
+|----------|----------|
+| `torch`, `torchvision` | Deep learning framework |
+| `transformers` | BLIP model (HuggingFace) |
+| `deep-translator` | Dịch VI↔EN (GoogleTranslator) |
+| `bert-score` | Đánh giá BERTScore |
+| `rouge-score` | Đánh giá ROUGE-L |
+| `nltk` | Đánh giá BLEU |
+| `ipywidgets` | Demo interactive trong Jupyter |
 
 ---
 
-## ⚠️ Challenges
+## 👥 Thông tin nhóm
 
-* Small dataset → overfitting
-* Question bias → model ignores question
-* Language mismatch (Vietnamese vs English)
-
----
-
-## 🔧 Improvements
-
-* Data augmentation
-* Better fusion strategy
-* Balanced question distribution
-* Fine-tuning pretrained models
-
----
-
-## 📌 Future Work
-
-* Train on larger dataset
-* Improve multilingual capability
-* Deploy as web app
-
----
-
-## 👨‍💻 Author
-
-* Student: Trần Nhật Huy
-* Course: Machine Learning
-* University: Ton Duc Thang University
-
----
-
-## 📎 Note
-
-This project is for academic purposes.
+| | |
+|--|--|
+| **Môn học** | Học Sâu (Deep Learning) |
+| **Đề tài** | Bài 1 — Hệ thống Hỏi đáp trên Ảnh (Visual Question Answering) |
